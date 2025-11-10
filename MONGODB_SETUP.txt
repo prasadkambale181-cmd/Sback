@@ -1,0 +1,55 @@
+========================================
+MONGODB ATLAS CONNECTION SETUP
+========================================
+
+STEP 1: Create Account
+→ Go to: https://www.mongodb.com/cloud/atlas/register
+→ Sign up (free forever)
+
+STEP 2: Create Cluster
+→ Choose M0 (Free tier)
+→ Wait 3-5 minutes for cluster creation
+
+STEP 3: Create Database User
+→ Database Access → Add New Database User
+→ Username: nagarnayak
+→ Password: (create a strong password and SAVE IT)
+
+STEP 4: Whitelist IP
+→ Network Access → Add IP Address
+→ Choose "Allow Access from Anywhere" (0.0.0.0/0)
+
+STEP 5: Get Connection String
+→ Database → Connect → Connect your application
+→ Copy the connection string
+
+STEP 6: Update .env File
+→ Open backend/.env
+→ Replace MONGO_URI with your connection string
+→ Format should be:
+
+MONGO_URI=mongodb+srv://nagarnayak:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/nagarnayak?retryWrites=true&w=majority
+
+IMPORTANT:
+- Replace YOUR_PASSWORD with your actual password
+- Keep /nagarnayak before the ?
+- No spaces in the connection string
+- Save the file
+
+STEP 7: Backend Will Auto-Restart
+→ Check backend console for "MongoDB Connected"
+→ If you see this, you're ready!
+
+========================================
+ALTERNATIVE: Local MongoDB
+========================================
+
+If you prefer local installation:
+
+1. Download: https://www.mongodb.com/try/download/community
+2. Install MongoDB Community Server
+3. Start MongoDB service
+4. Update .env:
+   MONGO_URI=mongodb://localhost:27017/nagarnayak
+
+========================================
