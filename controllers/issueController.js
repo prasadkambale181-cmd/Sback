@@ -1,4 +1,41 @@
 import Issue from "../models/issueModel.js";
+import { uploadBase64ToCloudinary } from '../config/cloudinary.js';
+
+// Helper function to check if string is base64
+const isBase64 = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    return str.startsWith('data:image/') && str.includes('base64,');
+};
+
+// Helper function to process image URLs
+const processImageUrl = async (imageUrl) => {
+    if (!imageUrl) return '';
+
+    console.log('Processing image URL, type:', typeof imageUrl, 'length:', imageUrl.length);
+
+    // If it's already a Cloudinary URL, return as is
+    if (imageUrl.includes('cloudinary.com')) {
+        console.log('Image is already a Cloudinary URL');
+        return imageUrl;
+    }
+
+    // If it's a base64 string, upload to Cloudinary
+    if (isBase64(imageUrl)) {
+        console.log('Image is base64, uploading to Cloudinary...');
+        try {
+            const cloudinaryUrl = await uploadBase64ToCloudinary(imageUrl);
+            console.log('Successfully uploaded to Cloudinary:', cloudinaryUrl);
+            return cloudinaryUrl;
+        } catch (error) {
+            console.error('Failed to upload base64 to Cloudinary:', error);
+            throw new Error('Failed to process image. Please try again.');
+        }
+    }
+
+    // If it's a regular URL, return as is
+    console.log('Image is a regular URL');
+    return imageUrl;
+};
 
 export const createIssue = async (req, res) => {
     try {
@@ -9,17 +46,20 @@ export const createIssue = async (req, res) => {
             return res.status(400).json({ message: "Title and description are required" });
         }
 
-        // Check if imageUrl is too large (base64 images can be huge)
-        if (imageUrl && imageUrl.length > 5000000) { // ~5MB limit
-            return res.status(400).json({
-                message: "Image is too large. Please use a smaller image or upload to an image hosting service."
-            });
+        // Process image URL (convert base64 to Cloudinary URL if needed)
+        let processedImageUrl = '';
+        if (imageUrl) {
+            try {
+                processedImageUrl = await processImageUrl(imageUrl);
+            } catch (error) {
+                return res.status(400).json({ message: error.message });
+            }
         }
 
         const issue = await Issue.create({
             title,
             description,
-            imageUrl: imageUrl || '',
+            imageUrl: processedImageUrl,
             category: category || 'Other',
             location: location || { address: '', lat: '', lng: '' },
             createdBy: req.user._id,
