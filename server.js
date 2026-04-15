@@ -7,11 +7,13 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 import connectDB from "./config/db.js";
+import passport from 'passport'
 import authRoutes from "./routes/authRoutes.js";
 import issueRoutes from "./routes/issueRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import nayakRoutes from "./routes/nayakRoutes.js";
+import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import { escalateOverdueIssues } from "./controllers/issueController.js";
 
@@ -49,10 +51,12 @@ app.use('/api/auth', authLimiter);
 app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(passport.initialize());
 
 app.get("/", (req, res) => res.send("SudharNayak API is running..."));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", googleAuthRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
