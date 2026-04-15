@@ -41,6 +41,24 @@ io.on('connection', (socket) => {
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan('dev'));
 
+// CORS — must be before rate limiters so OPTIONS preflight is never blocked
+const allowedOrigins = [
+    'https://sudharnayak.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+        callback(new Error('Not allowed by CORS'))
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+}
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
+
 // Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: 'Too many requests, please try again later.' });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many auth attempts.' });
@@ -48,7 +66,6 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too
 app.use('/api/', limiter);
 app.use('/api/auth', authLimiter);
 
-app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(passport.initialize());
