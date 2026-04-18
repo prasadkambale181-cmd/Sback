@@ -44,6 +44,7 @@ app.use(morgan('dev'));
 // CORS — must be before rate limiters so OPTIONS preflight is never blocked
 const allowedOrigins = [
     'https://sudharnayak.vercel.app',
+    'https://sudharnayak.netlify.app',
     'http://localhost:3000',
     'http://localhost:5173',
 ]
