@@ -1,17 +1,21 @@
 import Issue from "../models/issueModel.js";
-import { uploadBase64ToCloudinary } from '../config/cloudinary.js';
 import { classifyIssue, detectPriority, getSLADeadline, checkSLAStatus, findDuplicates, generateAIDescription } from '../services/aiService.js';
 
-const isBase64 = (str) => str && typeof str === 'string' && str.startsWith('data:image/') && str.includes('base64,');
+const isBase64 = (str) => str && typeof str === 'string' && str.startsWith('data:') && str.includes('base64,');
 
-const processImageUrl = async (imageUrl) => {
+const isValidUrl = (str) => {
+    try { new URL(str); return true; } catch { return false; }
+};
+
+const processImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
-    if (imageUrl.includes('cloudinary.com')) return imageUrl;
+    // Reject base64 — frontend must upload to Cloudinary directly
     if (isBase64(imageUrl)) {
-        const url = await uploadBase64ToCloudinary(imageUrl);
-        return url;
+        throw new Error('Please upload the image before submitting. Base64 images are not accepted.');
     }
-    return imageUrl;
+    // Accept any valid URL (Cloudinary, direct links, etc.)
+    if (isValidUrl(imageUrl)) return imageUrl;
+    return '';
 };
 
 export const createIssue = async (req, res) => {
@@ -20,7 +24,13 @@ export const createIssue = async (req, res) => {
         if (!title || !description) return res.status(400).json({ message: "Title and description are required" });
 
         let processedImageUrl = '';
-        if (imageUrl) processedImageUrl = await processImageUrl(imageUrl);
+        if (imageUrl) {
+            try {
+                processedImageUrl = processImageUrl(imageUrl);
+            } catch (error) {
+                return res.status(400).json({ message: error.message });
+            }
+        }
 
         // AI Classification
         const aiResult = classifyIssue(title, description);
@@ -107,7 +117,7 @@ export const updateIssue = async (req, res) => {
         if (status === 'Resolved') issue.resolvedAt = new Date();
 
         if (afterImageUrl) {
-            issue.afterImageUrl = await processImageUrl(afterImageUrl);
+            issue.afterImageUrl = processImageUrl(afterImageUrl);
         }
 
         // Update SLA escalation
