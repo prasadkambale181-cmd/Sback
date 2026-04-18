@@ -1,6 +1,6 @@
 import express from 'express'
 import multer from 'multer'
-import { v2 as cloudinary } from 'cloudinary'
+import cloudinary from '../config/cloudinary.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
