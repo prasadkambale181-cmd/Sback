@@ -37,7 +37,7 @@ router.post('/chat', async (req, res) => {
             model: 'llama3-8b-8192',
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
-                ...messages.slice(-10) // keep last 10 messages for context
+                ...messages.slice(-10)
             ],
             max_tokens: 300,
             temperature: 0.7,
@@ -47,8 +47,53 @@ router.post('/chat', async (req, res) => {
         res.json({ reply })
     } catch (error) {
         console.error('Nayak AI error:', error)
-        // Fallback response if Groq fails
         res.json({ reply: "I'm Nayak, your civic assistant! 🏙️ I'm having a moment — please try again shortly. You can also directly report your issue using the Report Issue button." })
+    }
+})
+
+// AI Image Scan — analyze image and generate description based on title
+router.post('/scan-image', async (req, res) => {
+    try {
+        const { imageBase64, title } = req.body
+        if (!imageBase64) return res.status(400).json({ message: 'Image required' })
+
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+
+        const prompt = title
+            ? `You are a civic issue analyst. The user has titled this issue: "${title}". Analyze this image and write a clear, factual 2-3 sentence description of the civic problem visible. Focus on: what the problem is, how severe it looks, and any immediate safety concerns. Be specific and professional.`
+            : `You are a civic issue analyst. Analyze this image and: 1) Identify the civic problem (pothole, garbage, water leak, broken streetlight, etc.), 2) Write a 2-3 sentence description of what you see, 3) Suggest a suitable title. Be specific and professional.`
+
+        const completion = await groq.chat.completions.create({
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    { type: 'image_url', image_url: { url: imageBase64 } }
+                ]
+            }],
+            max_tokens: 200,
+            temperature: 0.4,
+        })
+
+        const result = completion.choices[0]?.message?.content || ''
+
+        // Parse out title suggestion if no title was provided
+        let description = result
+        let suggestedTitle = ''
+        if (!title && result.includes('title')) {
+            const lines = result.split('\n').filter(Boolean)
+            const titleLine = lines.find(l => l.toLowerCase().includes('title'))
+            if (titleLine) {
+                suggestedTitle = titleLine.replace(/.*title[:\s]*/i, '').trim().replace(/["']/g, '')
+                description = lines.filter(l => !l.toLowerCase().includes('title')).join(' ').trim()
+            }
+        }
+
+        res.json({ description, suggestedTitle })
+    } catch (error) {
+        console.error('Image scan error:', error)
+        res.status(500).json({ message: 'Failed to analyze image', description: '' })
     }
 })
 
