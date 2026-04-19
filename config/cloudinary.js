@@ -10,6 +10,12 @@ cloudinary.config({
     api_secret: (process.env.CLOUDINARY_API_SECRET || '').trim(),
 });
 
+console.log('Cloudinary config loaded:', {
+    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || '').trim(),
+    api_key: process.env.CLOUDINARY_API_KEY ? '✅ set' : '❌ missing',
+    api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ set' : '❌ missing',
+});
+
 /**
  * Upload base64 image to Cloudinary
  * @param {string} base64String - Base64 encoded image
