@@ -51,7 +51,10 @@ router.post('/media', protect, upload.single('file'), async (req, res) => {
         res.json({ url, type: resourceType, publicId: result.public_id })
     } catch (error) {
         console.error('Upload error:', error)
-        res.status(500).json({ message: error.message || 'Upload failed' })
+        res.status(500).json({ 
+            message: error.message || 'Upload failed',
+            detail: error.http_code ? `Cloudinary error ${error.http_code}` : undefined
+        })
     }
 })
 
