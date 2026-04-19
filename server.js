@@ -18,6 +18,11 @@ import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import { escalateOverdueIssues } from "./controllers/issueController.js";
 
 dotenv.config();
+
+// Ensure critical env vars are set
+if (!process.env.MONGO_URI) process.env.MONGO_URI = process.env.DB_URL || ''
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = process.env.TOKEN_SECRET || 'sn_jwt_2024'
+if (!process.env.FRONTEND_URL) process.env.FRONTEND_URL = 'https://sudharnayak.vercel.app'
 connectDB();
 
 const app = express();

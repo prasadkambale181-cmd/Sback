@@ -5,15 +5,15 @@ dotenv.config();
 
 // Configure Cloudinary
 cloudinary.config({
-    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || '').trim(),
-    api_key: (process.env.CLOUDINARY_API_KEY || '').trim(),
-    api_secret: (process.env.CLOUDINARY_API_SECRET || '').trim(),
+    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || 'dqmktpekh').trim(),
+    api_key: (process.env.CLOUDINARY_API_KEY || '945117624673387').trim(),
+    api_secret: (process.env.CLOUDINARY_API_SECRET || 'KLllKPPf1gqr4ejLNdWe4xM5KU0').trim(),
 });
 
 console.log('Cloudinary config loaded:', {
-    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || '').trim(),
-    api_key: process.env.CLOUDINARY_API_KEY ? '✅ set' : '❌ missing',
-    api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ set' : '❌ missing',
+    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || 'dqmktpekh').trim(),
+    api_key: '✅ set',
+    api_secret: '✅ set',
 });
 
 /**
