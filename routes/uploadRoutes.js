@@ -5,70 +5,57 @@ import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
-// multer v2 — storage is accessed differently
+const storage = multer.memoryStorage()
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+    storage,
+    limits: { fileSize: 100 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+            'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
         if (allowed.includes(file.mimetype)) cb(null, true)
-        else cb(new Error('Invalid file type. Only images allowed.'))
+        else cb(new Error('Invalid file type'))
     }
 })
 
-// Upload image to Cloudinary
 router.post('/media', protect, upload.single('file'), async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file provided' })
-        }
+        if (!req.file) return res.status(400).json({ message: 'No file provided' })
 
-        // Convert buffer to base64 data URI
-        const b64 = Buffer.from(req.file.buffer).toString('base64')
-        const dataURI = `data:${req.file.mimetype};base64,${b64}`
-
-        // Upload to Cloudinary using base64 (works with both v1 and v2)
-        const result = await cloudinary.uploader.upload(dataURI, {
-            folder: 'sudharnayak',
-            resource_type: 'image',
-            quality: 'auto:good',
-            format: 'auto',
-            width: 1200,
-            crop: 'limit',
+        // Configure cloudinary using process.env directly
+        cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
         })
 
-        const url = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME.trim()}/image/upload/w_800,h_600,c_limit,q_auto:good,f_auto/${result.public_id}`
+        const isVideo = req.file.mimetype.startsWith('video/')
+        const resourceType = isVideo ? 'video' : 'image'
 
-        res.json({ url, type: 'image', publicId: result.public_id })
+        const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'sudharnayak',
+                    resource_type: resourceType,
+                    quality: isVideo ? 'auto' : 'auto:good',
+                    format: isVideo ? undefined : 'auto',
+                    ...(isVideo ? {} : { width: 1200, crop: 'limit' })
+                },
+                (error, result) => {
+                    if (error) reject(error)
+                    else resolve(result)
+                }
+            )
+            stream.end(req.file.buffer)
+        })
+
+        const url = isVideo
+            ? result.secure_url
+            : `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/w_800,h_600,c_limit,q_auto:good,f_auto/${result.public_id}`
+
+        res.json({ url, type: resourceType, publicId: result.public_id })
     } catch (error) {
-        console.error('Upload error:', error)
-        res.status(500).json({
-            message: error.message || 'Upload failed',
-            detail: error.http_code ? `Cloudinary ${error.http_code}` : 'Server error'
-        })
-    }
-})
-
-// Keep old test endpoint
-router.post('/test-cloudinary', protect, async (req, res) => {
-    try {
-        const { base64Image } = req.body
-        if (!base64Image) return res.status(400).json({ message: 'Base64 image is required' })
-
-        const result = await cloudinary.uploader.upload(base64Image, {
-            folder: 'sudharnayak',
-            resource_type: 'image',
-            quality: 'auto:good',
-            format: 'auto',
-            width: 800,
-            height: 600,
-            crop: 'limit'
-        })
-
-        res.json({ message: 'Image uploaded successfully', url: result.secure_url })
-    } catch (error) {
-        console.error('Cloudinary test error:', error)
-        res.status(500).json({ message: 'Failed to upload image' })
+        console.error('Upload error:', error.message)
+        res.status(500).json({ message: error.message || 'Upload failed' })
     }
 })
 
