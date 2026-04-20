@@ -3,6 +3,10 @@ import Groq from 'groq-sdk'
 
 const router = express.Router()
 
+// Debug — check if Groq key is set
+router.get('/debug', (req, res) => {
+    res.json({ groq_key: process.env.GROQ_API_KEY ? `SET (starts with ${process.env.GROQ_API_KEY.slice(0, 8)}...)` : 'MISSING' })
+})
 const SYSTEM_PROMPT = `You are Nayak, an intelligent AI assistant for SudharNayak — a Smart Civic Issue Reporting Platform for Indian cities.
 
 Your role:
@@ -31,6 +35,11 @@ router.post('/chat', async (req, res) => {
             return res.status(400).json({ message: 'Messages array required' })
         }
 
+        if (!process.env.GROQ_API_KEY) {
+            console.error('GROQ_API_KEY is not set')
+            return res.status(500).json({ reply: 'Groq API key not configured on server.' })
+        }
+
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
         const completion = await groq.chat.completions.create({
@@ -46,7 +55,7 @@ router.post('/chat', async (req, res) => {
         const reply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again."
         res.json({ reply })
     } catch (error) {
-        console.error('Nayak AI error:', error)
+        console.error('Nayak AI error:', error?.message, error?.status, error?.error)
         res.json({ reply: "I'm Nayak, your civic assistant! 🏙️ I'm having a moment — please try again shortly. You can also directly report your issue using the Report Issue button." })
     }
 })
