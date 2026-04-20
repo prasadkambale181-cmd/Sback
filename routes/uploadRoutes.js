@@ -62,7 +62,6 @@ router.post('/media', protect, (req, res, next) => {
                     folder: 'sudharnayak',
                     resource_type: resourceType,
                     quality: isVideo ? 'auto' : 'auto:good',
-                    format: isVideo ? undefined : 'auto',
                     ...(isVideo ? {} : { width: 1200, crop: 'limit' })
                 },
                 (error, result) => {
