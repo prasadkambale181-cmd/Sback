@@ -50,6 +50,7 @@ app.use(morgan('dev'));
 const allowedOrigins = [
     'https://sudharnayak.vercel.app',
     'https://sudharnayak.netlify.app',
+    'https://sudharnayak1.netlify.app',
     'http://localhost:3000',
     'http://localhost:5173',
 ]
