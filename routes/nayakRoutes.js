@@ -60,17 +60,35 @@ router.post('/chat', async (req, res) => {
     }
 })
 
-// AI Image Scan — analyze image and generate description based on title
+// AI Image Scan — analyze image and generate clean description in English + Marathi
 router.post('/scan-image', async (req, res) => {
     try {
-        const { imageBase64, title } = req.body
+        const { imageBase64, title, language } = req.body
         if (!imageBase64) return res.status(400).json({ message: 'Image required' })
 
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-        const prompt = title
-            ? `You are a civic issue analyst. The user has titled this issue: "${title}". Analyze this image and write a clear, factual 2-3 sentence description of the civic problem visible. Focus on: what the problem is, how severe it looks, and any immediate safety concerns. Be specific and professional.`
-            : `You are a civic issue analyst. Analyze this image and: 1) Identify the civic problem (pothole, garbage, water leak, broken streetlight, etc.), 2) Write a 2-3 sentence description of what you see, 3) Suggest a suitable title. Be specific and professional.`
+        const isMarathi = language === 'mr'
+
+        const prompt = isMarathi
+            ? `तुम्ही एक नागरी समस्या विश्लेषक आहात. ${title ? `या समस्येचे शीर्षक आहे: "${title}".` : ''}
+या प्रतिमेचे विश्लेषण करा आणि खालील स्वरूपात उत्तर द्या:
+
+समस्या: [एका ओळीत समस्या सांगा]
+स्थान: [दिसत असलेले ठिकाण]
+तीव्रता: [सौम्य / मध्यम / गंभीर]
+वर्णन: [२-३ वाक्यांत स्पष्ट वर्णन करा - काय दिसत आहे, किती गंभीर आहे, कोणाला धोका आहे]
+
+फक्त वरील स्वरूपात उत्तर द्या. मार्कडाउन वापरू नका.`
+            : `You are a civic issue analyst. ${title ? `The issue title is: "${title}".` : ''}
+Analyze this image and respond in this exact format:
+
+Issue: [one line summary of the problem]
+Location: [visible location details]
+Severity: [Minor / Moderate / Severe]
+Description: [2-3 clear sentences describing what is visible, how serious it is, and any safety concerns]
+
+Respond only in the above format. No markdown, no bullet points, no headers.`
 
         const completion = await groq.chat.completions.create({
             model: 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -81,25 +99,22 @@ router.post('/scan-image', async (req, res) => {
                     { type: 'image_url', image_url: { url: imageBase64 } }
                 ]
             }],
-            max_tokens: 200,
-            temperature: 0.4,
+            max_tokens: 250,
+            temperature: 0.3,
         })
 
-        const result = completion.choices[0]?.message?.content || ''
+        const raw = completion.choices[0]?.message?.content || ''
 
-        // Parse out title suggestion if no title was provided
-        let description = result
-        let suggestedTitle = ''
-        if (!title && result.includes('title')) {
-            const lines = result.split('\n').filter(Boolean)
-            const titleLine = lines.find(l => l.toLowerCase().includes('title'))
-            if (titleLine) {
-                suggestedTitle = titleLine.replace(/.*title[:\s]*/i, '').trim().replace(/["']/g, '')
-                description = lines.filter(l => !l.toLowerCase().includes('title')).join(' ').trim()
-            }
-        }
+        // Extract clean description from structured response
+        const descMatch = raw.match(/Description:\s*(.+?)(?:\n|$)/is)
+        const issueMatch = raw.match(/Issue:\s*(.+?)(?:\n|$)/i)
+        const severityMatch = raw.match(/Severity:\s*(.+?)(?:\n|$)/i)
 
-        res.json({ description, suggestedTitle })
+        const description = descMatch ? descMatch[1].trim() : raw.replace(/##.*?\n/g, '').replace(/\*\*/g, '').trim()
+        const suggestedTitle = !title && issueMatch ? issueMatch[1].trim() : ''
+        const severity = severityMatch ? severityMatch[1].trim() : ''
+
+        res.json({ description, suggestedTitle, severity, raw })
     } catch (error) {
         console.error('Image scan error:', error)
         res.status(500).json({ message: 'Failed to analyze image', description: '' })
