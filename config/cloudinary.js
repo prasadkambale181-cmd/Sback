@@ -10,11 +10,7 @@ cloudinary.config({
     api_secret: (process.env.CLOUDINARY_API_SECRET || 'KLllKPPf1gqr4ejLNdWe4xM5KU0').trim(),
 });
 
-console.log('Cloudinary config loaded:', {
-    cloud_name: (process.env.CLOUDINARY_CLOUD_NAME || 'dqmktpekh').trim(),
-    api_key: '✅ set',
-    api_secret: '✅ set',
-});
+console.log('Cloudinary cloud_name:', (process.env.CLOUDINARY_CLOUD_NAME || 'dqmktpekh').trim());
 
 /**
  * Upload base64 image to Cloudinary

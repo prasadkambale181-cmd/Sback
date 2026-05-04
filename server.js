@@ -20,9 +20,14 @@ import { escalateOverdueIssues } from "./controllers/issueController.js";
 
 dotenv.config();
 
-// Ensure critical env vars are set
-if (!process.env.MONGO_URI) process.env.MONGO_URI = process.env.DB_URL || ''
-if (!process.env.JWT_SECRET) process.env.JWT_SECRET = process.env.TOKEN_SECRET || 'sn_jwt_2024'
+// Strip quotes from env vars (common Render paste issue)
+if (process.env.MONGO_URI) {
+    process.env.MONGO_URI = process.env.MONGO_URI.replace(/^"|"$/g, '').trim()
+}
+
+// Fallback values
+if (!process.env.MONGO_URI) process.env.MONGO_URI = 'mongodb+srv://kaduutkarsh5_db_user:enFQm2byM4peOw02@cluster0.ye3b9a1.mongodb.net/nagarnayak?retryWrites=true&w=majority'
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'nagarnayak_super_secret_jwt_key_2024_change_in_production'
 if (!process.env.FRONTEND_URL) process.env.FRONTEND_URL = 'https://sudharnayak.vercel.app'
 connectDB();
 
