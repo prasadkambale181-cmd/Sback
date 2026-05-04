@@ -60,32 +60,63 @@ router.post('/chat', async (req, res) => {
     }
 })
 
-// AI Image Scan — generate description from image + title in English or Marathi
+// AI Image Scan — generate professional civic report from image + title + location
 router.post('/scan-image', async (req, res) => {
     try {
-        const { imageBase64, title, language } = req.body
+        const { imageBase64, title, language, location } = req.body
         if (!imageBase64) return res.status(400).json({ message: 'Image required' })
 
         const groq = new Groq({ apiKey: GROQ_KEY })
-        const isMarathi = language === 'mr'
+        const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+        const todayMr = new Date().toLocaleDateString('mr-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+        const loc = location || 'India'
 
-        const prompt = isMarathi
-            ? `तुम्ही एक नागरी समस्या विश्लेषक आहात. ${title ? `या समस्येचे शीर्षक आहे: "${title}".` : ''}
-या प्रतिमेचे विश्लेषण करा आणि खालील स्वरूपात फक्त मराठीत उत्तर द्या:
+        const prompt = `Generate a professional civic issue report based on the uploaded image${title ? ` and the issue title: "${title}"` : ''}${loc ? ` at location: ${loc}` : ''}.
 
-समस्या: [एका ओळीत समस्या सांगा]
-तीव्रता: [सौम्य / मध्यम / गंभीर]
-वर्णन: [2-3 वाक्यांत स्पष्ट वर्णन - काय दिसत आहे, किती गंभीर आहे, कोणाला धोका आहे]
+The output must be clean, formal, and realistic like an official government report.
+Do NOT use symbols such as #, *, bullets, or markdown.
+Generate content in BOTH English and Marathi.
+Today's date is ${today} / ${todayMr}.
 
-फक्त वरील स्वरूपात उत्तर द्या. मार्कडाउन, हेडर, बुलेट पॉइंट वापरू नका.`
-            : `You are a civic issue analyst. ${title ? `The issue title is: "${title}".` : ''}
-Analyze this image and respond in this exact format only:
+Follow this EXACT structure with no deviations:
 
-Issue: [one line summary]
-Severity: [Minor / Moderate / Severe]
-Description: [2-3 clear sentences — what is visible, how serious it is, any safety concerns]
+Title (English):
+Title (Marathi):
 
-No markdown, no bullet points, no numbered lists, no headers. Plain text only.`
+Location (English): ${loc}
+Location (Marathi):
+
+Date (English): ${today}
+Date (Marathi): ${todayMr}
+
+Civic Issue Type (English):
+Civic Issue Type (Marathi):
+
+Problem Summary (English):
+Problem Summary (Marathi):
+
+Detailed Description (English):
+Detailed Description (Marathi):
+
+Impact Analysis (English):
+Impact Analysis (Marathi):
+
+Severity Level (English):
+Severity Level (Marathi):
+
+Suggested Action (English):
+Suggested Action (Marathi):
+
+AI Confidence Score:
+
+Instructions:
+- Title should be news-style and impactful
+- Language must be formal and professional
+- Marathi should be natural and clear, not a literal translation
+- Severity must be one of: Low / Medium / High / Critical (with Marathi: कमी / मध्यम / उच्च / अत्यंत गंभीर)
+- Confidence score between 70% and 95%
+- Keep output structured and readable
+- Do not add any extra text outside the structure above`
 
         const completion = await groq.chat.completions.create({
             model: 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -96,32 +127,34 @@ No markdown, no bullet points, no numbered lists, no headers. Plain text only.`
                     { type: 'image_url', image_url: { url: imageBase64 } }
                 ]
             }],
-            max_tokens: 250,
+            max_tokens: 1000,
             temperature: 0.3,
         })
 
         const raw = completion.choices[0]?.message?.content || ''
 
-        const descKey = isMarathi ? 'वर्णन' : 'Description'
-        const issueKey = isMarathi ? 'समस्या' : 'Issue'
-        const severityKey = isMarathi ? 'तीव्रता' : 'Severity'
+        // Extract key fields for form auto-fill
+        const extract = (key) => {
+            const match = raw.match(new RegExp(`${key}:\\s*([^\\n]+)`, 'i'))
+            return match ? match[1].trim() : ''
+        }
 
-        const descMatch = raw.match(new RegExp(`${descKey}:\\s*(.+?)(?:\\n|$)`, 'is'))
-        const issueMatch = raw.match(new RegExp(`${issueKey}:\\s*(.+?)(?:\\n|$)`, 'i'))
-        const severityMatch = raw.match(new RegExp(`${severityKey}:\\s*(.+?)(?:\\n|$)`, 'i'))
+        const titleEn = extract('Title \\(English\\)')
+        const severityEn = extract('Severity Level \\(English\\)')
+        const confidence = extract('AI Confidence Score').replace('%', '').trim()
 
-        const rawDesc = descMatch ? descMatch[1].trim() : raw
-        const description = rawDesc
-            .replace(/##\s*/g, '')
+        // Build clean formatted description for the form
+        const description = raw
             .replace(/\*\*/g, '')
-            .replace(/^\d+\.\s*/gm, '')
-            .replace(/^[-•]\s*/gm, '')
+            .replace(/##/g, '')
             .trim()
 
         res.json({
-            description,
-            suggestedTitle: !title && issueMatch ? issueMatch[1].trim() : '',
-            severity: severityMatch ? severityMatch[1].trim() : ''
+            description,           // full formatted report
+            suggestedTitle: titleEn || '',
+            severity: severityEn || '',
+            confidence: confidence || '85',
+            raw
         })
     } catch (error) {
         res.status(500).json({ message: 'Failed to analyze image', description: '' })
