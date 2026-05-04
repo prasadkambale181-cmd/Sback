@@ -14,6 +14,7 @@ import commentRoutes from "./routes/commentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import nayakRoutes from "./routes/nayakRoutes.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import { escalateOverdueIssues } from "./controllers/issueController.js";
 
@@ -36,11 +37,9 @@ const io = new Server(httpServer, {
 app.set('io', io);
 
 io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-    socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
-    socket.on('joinIssue', (issueId) => socket.join(issueId));
-    socket.on('leaveIssue', (issueId) => socket.leave(issueId));
-});
+    socket.on('joinIssue', (issueId) => socket.join(issueId))
+    socket.on('leaveIssue', (issueId) => socket.leave(issueId))
+})
 
 // Security
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -85,6 +84,7 @@ app.use("/api/issues", issueRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/nayak", nayakRoutes);
+app.use("/api/users", userRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -240,6 +240,13 @@ export const getAnalytics = async (req, res) => {
         const byPriority = await Issue.aggregate([{ $group: { _id: '$priority', count: { $sum: 1 } } }]);
         const resolved = await Issue.countDocuments({ status: 'Resolved' });
         const escalated = await Issue.countDocuments({ status: 'Escalated' });
+        const pending = await Issue.countDocuments({ status: 'Pending' });
+
+        // Total users
+        const User = (await import('../models/userModel.js')).default;
+        const totalUsers = await User.countDocuments();
+        const totalAdmins = await User.countDocuments({ role: 'admin' });
+        const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).select('name email role createdAt');
 
         // Monthly trend (last 6 months)
         const sixMonthsAgo = new Date();
@@ -258,9 +265,26 @@ export const getAnalytics = async (req, res) => {
             { $limit: 5 }
         ]);
 
-        const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+        // Top reporters
+        const topReporters = await Issue.aggregate([
+            { $match: { createdBy: { $ne: null } } },
+            { $group: { _id: '$createdBy', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+            { $unwind: '$user' },
+            { $project: { name: '$user.name', email: '$user.email', count: 1 } }
+        ]);
 
-        res.json({ total, resolved, escalated, resolutionRate, byStatus, byCategory, byPriority, monthlyTrend, topLocations });
+        const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+        const avgResolutionTime = await Issue.aggregate([
+            { $match: { status: 'Resolved', resolvedAt: { $ne: null } } },
+            { $project: { diff: { $subtract: ['$resolvedAt', '$createdAt'] } } },
+            { $group: { _id: null, avg: { $avg: '$diff' } } }
+        ]);
+        const avgHours = avgResolutionTime[0] ? Math.round(avgResolutionTime[0].avg / (1000 * 60 * 60)) : 0;
+
+        res.json({ total, resolved, escalated, pending, resolutionRate, totalUsers, totalAdmins, recentUsers, byStatus, byCategory, byPriority, monthlyTrend, topLocations, topReporters, avgResolutionHours: avgHours });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
