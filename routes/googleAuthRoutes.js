@@ -6,41 +6,47 @@ import User from '../models/userModel.js'
 
 const router = express.Router()
 
-// Configure Google Strategy
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
-}, async (accessToken, refreshToken, profile, done) => {
-    try {
-        const email = profile.emails[0].value
-        const name = profile.displayName
+// Called from server.js AFTER dotenv.config()
+export const setupGoogleAuth = () => {
+    const clientID = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 
-        // Find or create user
-        let user = await User.findOne({ email })
-        if (!user) {
-            user = await User.create({
-                name,
-                email,
-                password: `google_${profile.id}_${Date.now()}`, // random password for Google users
-                role: 'citizen',
-            })
+    if (!clientID || !clientSecret) {
+        console.warn('Google OAuth not configured — skipping Google strategy setup')
+        return
+    }
+
+    passport.use(new GoogleStrategy({
+        clientID,
+        clientSecret,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
+    }, async (accessToken, refreshToken, profile, done) => {
+        try {
+            const email = profile.emails[0].value
+            const name = profile.displayName
+            let user = await User.findOne({ email })
+            if (!user) {
+                user = await User.create({
+                    name,
+                    email,
+                    password: `google_${profile.id}_${Date.now()}`,
+                    role: 'citizen',
+                })
+            }
+            return done(null, user)
+        } catch (err) {
+            return done(err, null)
         }
-        return done(null, user)
-    } catch (err) {
-        return done(err, null)
-    }
-}))
+    }))
 
-passport.serializeUser((user, done) => done(null, user._id))
-passport.deserializeUser(async (id, done) => {
-    try {
-        const user = await User.findById(id).select('-password')
-        done(null, user)
-    } catch (err) {
-        done(err, null)
-    }
-})
+    passport.serializeUser((user, done) => done(null, user._id))
+    passport.deserializeUser(async (id, done) => {
+        try {
+            const user = await User.findById(id).select('-password')
+            done(null, user)
+        } catch (err) { done(err, null) }
+    })
+}
 
 // Initiate Google OAuth
 router.get('/google',
@@ -49,7 +55,10 @@ router.get('/google',
 
 // Google OAuth Callback
 router.get('/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` }),
+    passport.authenticate('google', {
+        session: false,
+        failureRedirect: `${process.env.FRONTEND_URL || 'https://sudharnayak.vercel.app'}/login?error=google_failed`
+    }),
     (req, res) => {
         const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '30d' })
         const userData = {
@@ -59,7 +68,6 @@ router.get('/google/callback',
             role: req.user.role,
             token,
         }
-        // Redirect to frontend with token in query param
         const frontendURL = process.env.FRONTEND_URL || 'https://sudharnayak.vercel.app'
         res.redirect(`${frontendURL}/auth/google/success?data=${encodeURIComponent(JSON.stringify(userData))}`)
     }

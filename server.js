@@ -14,11 +14,13 @@ import commentRoutes from "./routes/commentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import nayakRoutes from "./routes/nayakRoutes.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
+import { setupGoogleAuth } from "./routes/googleAuthRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import { escalateOverdueIssues } from "./controllers/issueController.js";
 
 dotenv.config();
+setupGoogleAuth();
 
 // Strip quotes from env vars (common Render paste issue)
 if (process.env.MONGO_URI) {
