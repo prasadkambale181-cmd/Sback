@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
     socket.on('leaveIssue', (issueId) => socket.leave(issueId))
 })
 
-// Security
+app.set('trust proxy', 1)
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan('dev'));
 
