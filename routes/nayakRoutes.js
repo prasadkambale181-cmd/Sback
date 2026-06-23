@@ -3,7 +3,11 @@ import Groq from 'groq-sdk'
 
 const router = express.Router()
 
-const GROQ_KEY = process.env.GROQ_API_KEY || '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'
+const GROQ_KEY = process.env.GROQ_API_KEY
+
+if (!GROQ_KEY) {
+    console.error('❌ GROQ_API_KEY not found in environment variables')
+}
 
 const SYSTEM_PROMPT = `You are Nayak, a helpful assistant for SudharNayak — a civic issue reporting platform for Indian cities.
 
@@ -41,7 +45,7 @@ router.post('/chat', async (req, res) => {
         const groq = new Groq({ apiKey: GROQ_KEY })
 
         const completion = await groq.chat.completions.create({
-            model: 'llama3-8b-8192',
+            model: 'llama-3.1-8b-instant',
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 ...messages.slice(-8).map(m => ({
@@ -56,6 +60,8 @@ router.post('/chat', async (req, res) => {
         const reply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again."
         res.json({ reply })
     } catch (error) {
+        console.error('Nayak chat error:', error.message)
+        console.error('Error details:', error)
         res.status(500).json({ reply: "I'm having trouble right now. Please try again in a moment! 🔄" })
     }
 })
