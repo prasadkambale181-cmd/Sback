@@ -140,6 +140,77 @@ export const updateIssue = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// User edit their own issue (only basic fields)
+export const editUserIssue = async (req, res) => {
+    try {
+        const { title, description, imageUrl, category, location } = req.body;
+
+        const issue = await Issue.findById(req.params.id);
+        if (!issue) {
+            return res.status(404).json({ message: "Issue not found" });
+        }
+
+        // Check if user owns this issue
+        if (issue.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "You can only edit your own issues" });
+        }
+
+        // Don't allow editing of resolved or escalated issues
+        if (issue.status === 'Resolved' || issue.status === 'Escalated') {
+            return res.status(400).json({ message: "Cannot edit resolved or escalated issues" });
+        }
+
+        // Update allowed fields
+        if (title) issue.title = title;
+        if (description) issue.description = description;
+        if (category && category !== issue.category) {
+            // If category changes, re-run AI classification
+            const aiResult = classifyIssue(title || issue.title, description || issue.description);
+            issue.category = category;
+            issue.priority = detectPriority(issue.title, issue.description, category);
+            issue.aiClassification = {
+                category: aiResult.category,
+                confidence: aiResult.confidence,
+                suggestedPriority: issue.priority,
+                keywords: aiResult.keywords
+            };
+            // Update SLA based on new category
+            const slaData = getSLADeadline(category);
+            issue.sla.deadline = slaData.deadline;
+            issue.sla.hoursAllowed = slaData.hoursAllowed;
+        }
+        if (location) issue.location = location;
+
+        // Handle image update
+        if (imageUrl) {
+            try {
+                issue.imageUrl = processImageUrl(imageUrl);
+            } catch (error) {
+                return res.status(400).json({ message: error.message });
+            }
+        }
+
+        const updatedIssue = await issue.save();
+
+        // Emit socket event for real-time updates
+        if (req.app.get('io')) {
+            req.app.get('io').emit('issueEdited', {
+                issueId: issue._id,
+                title: issue.title,
+                description: issue.description,
+                category: issue.category
+            });
+        }
+
+        res.json({
+            message: "Issue updated successfully",
+            issue: updatedIssue
+        });
+    } catch (error) {
+        console.error('Edit issue error:', error);
+        res.status(500).json({ message: error.message || 'Failed to update issue' });
+    }
+};
 
 export const deleteIssue = async (req, res) => {
     try {

@@ -16,6 +16,7 @@ About SudharNayak:
 - Each report gets AI-classified by category and priority (Low / Medium / High / Critical)
 - SLA timelines: Electricity = 6 hours, Water = 12 hours, Garbage = 24 hours, Road = 48 hours
 - Citizens can upvote issues — more upvotes raises the priority
+- Users can EDIT their own issues (title, description, category, location, image) as long as they're not resolved or escalated
 - Duplicate detection prevents repeat reports of the same issue
 - Admins manage and resolve issues via a dashboard
 - Real-time notifications when issue status changes
@@ -26,7 +27,8 @@ How to use the platform:
 2. Click "Report Issue" and fill in title, description, category, photo, and location
 3. Submit — AI will classify and route it automatically
 4. Track your issue status in "My Reports"
-5. Upvote other issues you agree with to raise their priority
+5. Edit your issues if needed (click edit button on your issues)
+6. Upvote other issues you agree with to raise their priority
 
 Rules:
 - Keep answers short (2-4 sentences)
