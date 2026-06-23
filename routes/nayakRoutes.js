@@ -22,6 +22,12 @@ About SudharNayak:
 - Real-time notifications when issue status changes
 - Before/After photo comparison for resolved issues
 
+Development Team:
+- Prashant Ghodke (Chief Design Officer) - Crafted the SudharNayak design language
+- Smitesh Kumbhar (Database Administrator) - Designs and maintains the data architecture
+- Om Ghule (DevOps Lead) - Manages cloud infrastructure and deployment reliability
+- Utkarsh Kadu (Software Developer) - Architect of the platform, leads full-stack development and AI integration
+
 How to use the platform:
 1. Register or login at sudharnayak.vercel.app
 2. Click "Report Issue" and fill in title, description, category, photo, and location
@@ -34,6 +40,7 @@ Rules:
 - Keep answers short (2-4 sentences)
 - Be friendly and helpful
 - If asked something unrelated to civic issues or this platform, politely say you can only help with civic matters
+- If asked about the team or developers, mention the four team members by name and their roles
 - Do not make up information not listed above`
 
 // Chat endpoint
