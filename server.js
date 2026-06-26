@@ -16,6 +16,7 @@ import nayakRoutes from "./routes/nayakRoutes.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { setupGoogleAuth } from "./routes/googleAuthRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import { escalateOverdueIssues } from "./controllers/issueController.js";
 
@@ -92,6 +93,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/nayak", nayakRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
