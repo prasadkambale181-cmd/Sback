@@ -8,7 +8,7 @@ const issueSchema = new mongoose.Schema({
     afterImageUrl: { type: String }, // Before/After validation
     category: {
         type: String,
-        enum: ["Road", "Garbage", "Water", "Electricity", "Sewage", "Parks", "Noise", "Other"],
+        enum: ["Road", "Garbage", "Water", "Electricity", "Sewage", "Parks", "Noise", "Other", "Awareness Campaign"],
         default: "Other"
     },
     location: {
