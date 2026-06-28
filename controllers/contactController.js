@@ -1,10 +1,12 @@
 import nodemailer from 'nodemailer'
 
 const createTransporter = () => nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.CONTACT_EMAIL_USER,
-        pass: process.env.CONTACT_EMAIL_PASS.replace(/\s/g, ''),
+        pass: process.env.CONTACT_EMAIL_PASS.replace(/["\s]/g, ''),
     },
 })
 
@@ -49,7 +51,7 @@ export const submitContact = async (req, res) => {
 
         res.status(200).json({ message: 'Message sent successfully!' })
     } catch (err) {
-        console.error('Contact email error:', err)
+        console.error('Contact email error:', err.message, err.code)
         res.status(500).json({ message: 'Failed to send message. Please try again.' })
     }
 }
@@ -86,7 +88,7 @@ export const subscribeNewsletter = async (req, res) => {
         })
         res.status(200).json({ message: 'Subscribed successfully!' })
     } catch (err) {
-        console.error('Newsletter error:', err)
+        console.error('Newsletter error:', err.message, err.code)
         res.status(500).json({ message: 'Failed to subscribe. Please try again.' })
     }
 }

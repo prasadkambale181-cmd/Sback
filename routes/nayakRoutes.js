@@ -98,52 +98,33 @@ router.post('/scan-image', async (req, res) => {
         const todayMr = new Date().toLocaleDateString('mr-IN', { day: 'numeric', month: 'long', year: 'numeric' })
         const loc = location || 'India'
 
-        const prompt = `Generate a professional civic issue report based on the uploaded image${title ? ` and the issue title: "${title}"` : ''}${loc ? ` at location: ${loc}` : ''}.
+        const prompt = `You are an AI civic issue analyst. Analyze the image${title ? ` with the issue title: "${title}"` : ''} and generate a professional civic report.
 
-The output must be clean, formal, and realistic like an official government report.
-Do NOT use symbols such as #, *, bullets, or markdown.
-Generate content in BOTH English and Marathi.
-Today's date is ${today} / ${todayMr}.
+Location: ${loc}
+Date: ${today}
 
-Follow this EXACT structure with no deviations:
+FIRST, check if the image actually matches the issue title. If the image clearly does NOT match the title (e.g., title says "pothole" but image shows a person, food, animal, or unrelated scene), return ONLY this:
 
-Title (English):
-Title (Marathi):
+MISMATCH: true
+MISMATCH_REASON: (one sentence explaining what the image actually shows vs what the title says)
 
-Location (English): ${loc}
-Location (Marathi):
+If the image DOES match or is relevant to the title, return EXACTLY this structure with no markdown, no asterisks, no bullet points:
 
-Date (English): ${today}
-Date (Marathi): ${todayMr}
+MISMATCH: false
 
-Civic Issue Type (English):
-Civic Issue Type (Marathi):
+SUGGESTED_TITLE: (one line, news-style English title)
 
-Problem Summary (English):
-Problem Summary (Marathi):
+SEVERITY: (one of: Low / Medium / High / Critical)
 
-Detailed Description (English):
-Detailed Description (Marathi):
+CONFIDENCE: (number between 70 and 95)
 
-Impact Analysis (English):
-Impact Analysis (Marathi):
+ENGLISH_DESCRIPTION:
+(Write 4-5 sentences in formal English describing: what the issue is, where it is, what impact it has on citizens, and what action is needed. Be specific and professional.)
 
-Severity Level (English):
-Severity Level (Marathi):
+MARATHI_DESCRIPTION:
+(Write the same description in natural formal Marathi. Do not translate word by word — write as a native Marathi speaker would write an official complaint. 4-5 sentences.)
 
-Suggested Action (English):
-Suggested Action (Marathi):
-
-AI Confidence Score:
-
-Instructions:
-- Title should be news-style and impactful
-- Language must be formal and professional
-- Marathi should be natural and clear, not a literal translation
-- Severity must be one of: Low / Medium / High / Critical (with Marathi: कमी / मध्यम / उच्च / अत्यंत गंभीर)
-- Confidence score between 70% and 95%
-- Keep output structured and readable
-- Do not add any extra text outside the structure above`
+Do not add anything outside this structure.`
 
         const completion = await groq.chat.completions.create({
             model: 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -160,24 +141,34 @@ Instructions:
 
         const raw = completion.choices[0]?.message?.content || ''
 
-        // Extract key fields for form auto-fill
         const extract = (key) => {
             const match = raw.match(new RegExp(`${key}:\\s*([^\\n]+)`, 'i'))
             return match ? match[1].trim() : ''
         }
 
-        const titleEn = extract('Title \\(English\\)')
-        const severityEn = extract('Severity Level \\(English\\)')
-        const confidence = extract('AI Confidence Score').replace('%', '').trim()
+        const extractBlock = (key) => {
+            const match = raw.match(new RegExp(`${key}:\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|$)`, 'i'))
+            return match ? match[1].trim() : ''
+        }
 
-        // Build clean formatted description for the form
-        const description = raw
-            .replace(/\*\*/g, '')
-            .replace(/##/g, '')
-            .trim()
+        // Check for mismatch first
+        const mismatch = extract('MISMATCH').toLowerCase() === 'true'
+        if (mismatch) {
+            const reason = extract('MISMATCH_REASON')
+            return res.json({ mismatch: true, mismatchReason: reason })
+        }
+
+        const titleEn = extract('SUGGESTED_TITLE')
+        const severityEn = extract('SEVERITY')
+        const confidence = extract('CONFIDENCE').replace('%', '').trim()
+        const descriptionEn = extractBlock('ENGLISH_DESCRIPTION')
+        const descriptionMr = extractBlock('MARATHI_DESCRIPTION')
 
         res.json({
-            description,           // full formatted report
+            mismatch: false,
+            descriptionEn,
+            descriptionMr,
+            description: descriptionEn,
             suggestedTitle: titleEn || '',
             severity: severityEn || '',
             confidence: confidence || '85',
